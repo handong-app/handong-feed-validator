@@ -3,5 +3,5 @@
 
 ## Installation
 ```shell
-pip install fastapi uvicorn scikit-learn numpy
+pip install fastapi uvicorn scikit-learn numpy requests
 ```
