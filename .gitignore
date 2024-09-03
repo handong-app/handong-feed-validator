@@ -12,6 +12,8 @@
 # Icon must end with two \r
 Icon
 
+artifacts/*
+.idea/*
 
 # Thumbnails
 ._*
