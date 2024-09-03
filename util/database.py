@@ -19,25 +19,40 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 def db_insert(session, message_id, chat_id, client_message_id, room_id, sent_at, user_id, message, current_time, duplicate_count, original_id):
-    session.execute(text(
-        """
-        INSERT INTO mydb_TbKaFeed 
-        (id, chatId, clientMessageId, roomId, sentAt, userId, message, createdDate, modifiedDate, duplicate_count, original_message_id, deleted)
-        VALUES (:id, :chatId, :clientMessageId, :roomId, :sentAt, :userId, :message, :createdDate, :modifiedDate, :duplicate_count, :original_message_id, :deleted)
-        """
-    ), {
-        "id": message_id,
-        "chatId": chat_id,
-        "clientMessageId": client_message_id,
-        "roomId": room_id,
-        "sentAt": sent_at,
-        "userId": user_id,
-        "message": message,
-        "createdDate": current_time,
-        "modifiedDate": current_time,
-        "duplicate_count": duplicate_count,
-        "original_message_id": original_id,
-        "deleted": "N"
-    })
-    session.commit()
+    try:
+        session.execute(text(
+            """
+            INSERT INTO mydb_TbKaFeed 
+            (id, chatId, clientMessageId, roomId, sentAt, userId, message, createdDate, modifiedDate, duplicate_count, original_message_id, deleted)
+            VALUES (:id, :chatId, :clientMessageId, :roomId, :sentAt, :userId, :message, :createdDate, :modifiedDate, :duplicate_count, :original_message_id, :deleted)
+            """
+        ), {
+            "id": message_id,
+            "chatId": chat_id,
+            "clientMessageId": client_message_id,
+            "roomId": room_id,
+            "sentAt": sent_at,
+            "userId": user_id,
+            "message": message,
+            "createdDate": current_time,
+            "modifiedDate": current_time,
+            "duplicate_count": duplicate_count,
+            "original_message_id": original_id,
+            "deleted": "N"
+        })
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"데이터 삽입 중 문제 발생: {e}")
+    finally:
+        print("데이터가 성공적으로 삽입되었습니다.")
+        session.close()
