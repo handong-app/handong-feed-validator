@@ -3,5 +3,5 @@
 
 ## Installation
 ```shell
-pip install fastapi uvicorn scikit-learn numpy requests
+pip install fastapi uvicorn scikit-learn numpy requests python-dotenv
 ```
