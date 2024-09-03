@@ -22,9 +22,9 @@ for i, vector in enumerate(tfidf_matrix):
     annoy_index.add_item(i, vector)
 
 annoy_index.build(n_trees=10)
-annoy_index.save('annoy_index.ann')
+annoy_index.save('../artifacts/annoy_index.ann')
 
 # TF-IDF 벡터화 모델 저장
 import pickle
-with open('tfidf_vectorizer.pkl', 'wb') as f:
+with open('../artifacts/tfidf_vectorizer.pkl', 'wb') as f:
     pickle.dump(tfidf_vectorizer, f)
