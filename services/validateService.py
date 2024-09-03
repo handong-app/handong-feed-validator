@@ -72,6 +72,7 @@ class ValidateService:
                 "is_duplicate": True,
                 "original_id": original_id,
                 "distance": distances[0],
+                "duplicate_count": new_duplicate_count
             }
         else:
             db_insert(session, message_id, request.chat_id, request.client_message_id, request.room_id, request.sent_at,

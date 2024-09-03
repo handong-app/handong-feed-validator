@@ -7,3 +7,5 @@ class ValidateResponse(BaseModel):
     is_duplicate: bool
     original_id: Optional[str]
     distance: Optional[float]
+    duplicate_count: Optional[int]
+
