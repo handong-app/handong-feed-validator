@@ -25,6 +25,9 @@ class ValidateService:
         with engine.connect() as connection:
             df = pd.read_sql_table('mydb_TbKaFeed', con=connection)
 
+
+        print(request.message)
+        print()
         # 입력된 텍스트 TF-IDF 벡터화
         request_message_vector = tfidf_vectorizer.transform([request.message]).toarray().flatten()
 
@@ -32,7 +35,9 @@ class ValidateService:
         n_similar = 1
         similar_items, distances = annoy_index.get_nns_by_vector(request_message_vector, n_similar, include_distances=True)
 
-        threshold = 1.1
+        # 0에 가까울 수록 유사한 정도가 높다. 0은 완전히 같은 것이다.
+        # 중복 아닌 것을 중복 처리 하는 것 보다, 중복인 것을 못잡는 상황이 더 낫다고 판단, 임계값 하향 조정.
+        threshold = 1.08
 
         # for idx in range(len(distances)):
         # 메시지 ID 생성 (UUID)
@@ -49,16 +54,21 @@ class ValidateService:
 
             # 중복 메시지에서 원본 메시지의 id를 가져옴.
             original_id = df.iloc[similar_items[0]]['original_message_id']
+            print("original_id:",original_id)
             # 만약 original_id가 Null 일 경우, 중복 메시지가 원본이다.
+            # original_id 설정해주고, 중복 횟수 1로 설정.
             if original_id is None:
                 # original_id 를 중복 메시지의 id로 설정
                 original_id = df.iloc[similar_items[0]]['id']
-            max_duplicate_count = df[df['original_message_id'] == original_id]['duplicate_count'].max()
-            new_duplicate_count = max_duplicate_count + 1
+                print("유사메시지가 원본:",original_id)
+                new_duplicate_count = 1
+                print("new_duplicate_count:", new_duplicate_count)
+            else:
+                max_duplicate_count = df[df['original_message_id'] == original_id]['duplicate_count'].max()
+                print("max_duplicate_count:",max_duplicate_count)
+                new_duplicate_count = max_duplicate_count + 1
+                print("new_duplicate_count:",new_duplicate_count)
 
-            # max_duplicate_count 가 없으면 nan 이 된다. 이 때 0 대입.
-            if math.isnan(new_duplicate_count):
-                new_duplicate_count = 0
 
             # DB에 추가
             db_insert(session, message_id, request.chat_id, request.client_message_id, request.room_id, request.sent_at,
@@ -66,7 +76,7 @@ class ValidateService:
 
             print(f"중복된 메시지입니다. (원본 메시지 ID: {original_id}, 중복 횟수: {new_duplicate_count})")
 
-            return {
+            res = {
                 "message_id": message_id,
                 "message": request.message,
                 "is_duplicate": True,
@@ -79,9 +89,10 @@ class ValidateService:
                       request.user_id, request.message, current_time, 0, None)
             print("중복되지 않은 새로운 메시지입니다.")
 
-            return {
+            res =  {
                 "message_id": message_id,
                 "message": request.message,
                 "is_duplicate": False
             }
-        
+
+        return res
