@@ -2,6 +2,7 @@ import os
 from sqlalchemy import text
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
 from dotenv import load_dotenv
 from urllib.parse import quote
 
@@ -17,7 +18,8 @@ DATABASE_URL = f"mysql+pymysql://{db_username}:{db_password}@{db_host}:{db_port}
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
+# 모든 모델의 부모
+Base = declarative_base()
 
 def get_db():
     db = SessionLocal()
