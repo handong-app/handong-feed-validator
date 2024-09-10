@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from schemas.validateRequest import ValidateRequest
-from services.validateService import ValidateService
-from schemas.validateResponse import ValidateResponse
+from schemas.validate_request import ValidateRequest
+from services.validate_service import ValidateService
+from schemas.validate_response import ValidateResponse
 from util.database import get_db
 
 
