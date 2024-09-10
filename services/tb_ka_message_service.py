@@ -24,5 +24,3 @@ class TbKaMessageService:
             session.rollback()
             print(f"데이터 삽입 중 문제 발생: {e}")
             raise
-        finally:
-            session.close()
