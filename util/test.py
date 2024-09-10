@@ -8,8 +8,38 @@ import pickle
 import math
 import uuid
 
-from util.database import engine, db_insert
+from util.database import engine
 
+
+def db_insert(session, message_id, chat_id, client_message_id, room_id, sent_at, user_id, message, current_time, duplicate_count, original_id):
+    try:
+        session.execute(text(
+            """
+            INSERT INTO mydb_TbKaFeed 
+            (id, chatId, clientMessageId, roomId, sentAt, userId, message, createdDate, modifiedDate, duplicate_count, original_message_id, deleted)
+            VALUES (:id, :chatId, :clientMessageId, :roomId, :sentAt, :userId, :message, :createdDate, :modifiedDate, :duplicate_count, :original_message_id, :deleted)
+            """
+        ), {
+            "id": message_id,
+            "chatId": chat_id,
+            "clientMessageId": client_message_id,
+            "roomId": room_id,
+            "sentAt": sent_at,
+            "userId": user_id,
+            "message": message,
+            "createdDate": current_time,
+            "modifiedDate": current_time,
+            "duplicate_count": duplicate_count,
+            "original_message_id": original_id,
+            "deleted": "N"
+        })
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"데이터 삽입 중 문제 발생: {e}")
+    finally:
+        print("데이터가 성공적으로 삽입되었습니다.")
+        session.close()
 
 # TF-IDF 벡터화 모델 로드
 with open('tfidf_vectorizer.pkl', 'rb') as f:
@@ -28,31 +58,7 @@ with engine.connect() as connection:
 
 # user_input = input("테스트 할 text 입력\n============================================\n\n")
 # print("\n\n============================================\n\n")
-user_input ="""[D-2]🫢하버드보다 들어가기 어렵다는 미네르바 대학의 교육이 한동에 들어온다고⁉️🫢
-
-테스트테스으으으ㅡ으으ㅡ으으ㅡㅇ트ㅡ미네르바 대학의 혁신적인 교육 방식과 우수성을 경험할 수 있는 특별한 기회를 소개합니다람쥐
-
-캠퍼스 없는 대학, 온라인 대학, 스타트업 대학, 하버드대학보다 들어가기 어려운 대학 등 미네르바 교육의 수식어만 보더라도 알 수 있듯이 미네르바 교육은 기존의 전통적인 교육 시스템과는 차별화된 혁신적인 접근 방식을 통해 학생들에게 글로벌 리더로 성장할 수 있는 기회를 제공하는 미래형 교육입니다. 
-
-🗣️ 주요내용
-- 미네르바-HGU 4C 교과목 소개 및 수업방식 안내
-- 질의응답
-
-⏰ 일시
-- 영어 버전 설명회 : 2024.07.15(월) 10:30am
-
-💻 장소
-- 온라인(Zoom)
-
-🗳️신청방법
-- 구글폼 작성(설명회 전일 자정까지)
-   https://forms.gle/rUtubj5zpyth89W97
-   🔗신청자 한해 당일 문자로 줌 링크 발송
-
-한동대학교에서는 전공을 초월하여 창의적, 비판적으로 사고하고 공동체 안에서 효과적으로 소통, 협력할 수 있는 
-역량을 함양할 수 있도록, 미네르바 대학의 4C (Critical Thinking, Communication, Collaboration, Creativity) 교과목을 도입하고 2024학년도 2학기부터 운영을 시작합니다.
-
-교과목과 수업 방식에 대한 이해를 위해 학생 대상 설명회를 개최하오니, 학생 여러분의 많은 참여 바랍니다.🙌"""
+user_input ="""[D-2]🫢하버드보다 들어가기 어렵다는 미네르바 대학의 교육이 한동에 들어온다고⁉️🫢"""
 
 # 입력된 텍스트 TF-IDF 벡터화
 user_vector = tfidf_vectorizer.transform([user_input]).toarray().flatten()
