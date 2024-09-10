@@ -1,5 +1,4 @@
 from sqlalchemy import Column, String, DateTime, BigInteger, Integer
-import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
