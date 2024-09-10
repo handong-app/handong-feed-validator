@@ -13,7 +13,7 @@ class TbSubject(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     created_at = Column(DateTime, default=get_seoul_time)
     last_sent_at = Column(Integer)
-    last_sent_tb_ka_message_id = Column(String(32))
+    last_sent_chat_id = Column(BigInteger)
     deleted = Column(String(1), default="N")
     # priority_value
     # is_ban
