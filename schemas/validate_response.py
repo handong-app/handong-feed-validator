@@ -4,5 +4,5 @@ from typing import Optional
 class ValidateResponse(BaseModel):
     message_id: str
     is_duplicate: bool
-    subject_id: Optional[str]
+    subject_id: int
 
