@@ -57,6 +57,39 @@ uvicorn main:app --reload
 ```
 The server will run by default at http://127.0.0.1:8000.
 
+## Alembic Migration
+### 1. Generating a Migration File
+After modifying your models, you need to create a migration file to update the database schema. To automatically generate a migration file based on the model changes, run the following command:
+```shell
+alembic revision --autogenerate -m "Add your migration description here"
+```
+This command detects the differences between the database schema and the SQLAlchemy models, and generates a migration file accordingly.
+
+Once the migration file is generated, you can find it in the alembic/versions directory. `Review and edit` the migration file to ensure that it contains the **correct SQL commands for creating, modifying, or dropping** tables.
+
+### 2.  Applying Database Migrations
+After generating a migration file, apply the migrations to the database using the following command:
+```shell
+alembic upgrade head
+```
+This command applies all pending migrations to update the database schema to the latest version.
+> Note that this command DIRECTLY MODIFY YOUR DB SCHEMA.   
+> Make sure that your migration file contains the **correct SQL commands**.
+
+### 3. Downgrading the Database
+If you need to revert a migration, you can downgrade the database to the previous version using the following command:
+```shell
+alembic downgrade -1
+```
+This command rolls back the most recent migration. If you want to downgrade to a specific version, you can specify the migration revision ID:
+```shell
+alembic downgrade <revision_id>
+```
+
+
+## Database Schema Overview
+![ERD.png](assets/ERD.png)
+
 ## API Documentation
 ### `/api/kafeed/validate` (POST)
 #### Description
