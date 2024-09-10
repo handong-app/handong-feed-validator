@@ -3,13 +3,9 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 from logging.config import fileConfig
-from dotenv import load_dotenv
 
 from util.database import Base, DATABASE_URL
 import models
-
-# load_dotenv()
-# DATABASE_URL = os.getenv('DATABASE_URL')
 
 # Alembic 설정
 config = context.config
