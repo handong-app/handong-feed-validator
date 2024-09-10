@@ -7,7 +7,7 @@ from util.database import engine
 
 
 with engine.connect() as connection:
-    df = pd.read_sql_table('mydb_TbKaFeed', con=connection)
+    df = pd.read_sql_table('TbKaMessage', con=connection)
 
 # TF-IDF 벡터화
 tfidf_vectorizer = TfidfVectorizer()
