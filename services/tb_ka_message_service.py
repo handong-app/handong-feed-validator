@@ -1,5 +1,6 @@
 from models import TbKaMessage
 from schemas.tb_ka_message_dto import TbKaMessageDto
+from util.build_annoy_index import build_annoy_index
 
 
 class TbKaMessageService:
@@ -18,9 +19,11 @@ class TbKaMessageService:
             session.add(new_message)
             session.commit()
 
+            # 새 Message 저장 후 index build
+            build_annoy_index()
+
             return new_message
         except Exception as e:
-            # 문제가 발생하면 롤백
             session.rollback()
             print(f"데이터 삽입 중 문제 발생: {e}")
             raise
