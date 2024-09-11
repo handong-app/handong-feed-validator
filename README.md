@@ -1,4 +1,4 @@
-# Handong Feed Validator
+`# Handong Feed Validator
 > This project is a FastAPI-based system that compares user-inputted messages with existing messages in a database to detect duplicates based on similarity.
 
 ## Key Features
@@ -98,34 +98,38 @@ alembic downgrade <revision_id>
 #### Request Body
 ```json
 {
+    "room_id": 1234567890,
+    "user_id": 1234567890,
     "chat_id": 1234567890,
     "client_message_id": 1234567890,
-    "room_id": 1234567890,
-    "sent_at": 1609459200,
-    "user_id": 1234567890,
-    "message": "Your message text here"
+    "message": "Your message text here",
+    "sent_at": 1609459200
 }
 ```
 #### Response:
-- If the message is a duplicate
-    ```json
-    {
-        "message_id": "26970924ffb244be839774a32576b4bb",
-        "message": "Your message text here",
-        "is_duplicate": true,
-        "original_id": "06e61bda7f204ebb9819fdeee55e62fa",
-        "distance": 0.1234,
-        "duplicate_count": 1
-    }
-    ```
-- If the message is not a duplicate
-    ```json
-    {
-        "message_id": "26970924ffb244be839774a32576b4bb",
-        "message": "Your message text here",
-        "is_duplicate": false
-    }
-    ```
+- On success
+  ```json
+  {
+      "message_id": "UUID",
+      "is_duplicate": true,
+      "subject_id": 0
+  }
+   ```
+- If an error occurs 
+  ```json
+  {
+    "detail": [
+      {
+        "loc": [
+          "string",
+          0
+        ],
+        "msg": "string",
+        "type": "string"
+      }
+    ]
+  }
+  ```
 
 ## Notes
 - Ensure that the build_annoy_index.py script is run every time the message database is updated significantly, to keep the Annoy index up to date.
