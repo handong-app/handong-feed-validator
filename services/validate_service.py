@@ -1,11 +1,11 @@
 import os
 import uuid
 import pickle
-from datetime import datetime
+import pandas as pd
 
 from sqlalchemy.orm import Session
 from annoy import AnnoyIndex
-import pandas as pd
+from datetime import datetime
 
 from services.tb_subject_service import TbSubjectService
 from services.tb_ka_message_service import TbKaMessageService
@@ -18,26 +18,9 @@ from util.database import engine
 class ValidateService:
     @staticmethod
     def process_validate(request: ValidateDto.ValidateReqDto, session: Session) -> ValidateDto.ValidateResDto:
-        # 기존 data 가 하나도 없을 시
+        # 기존 data 가 하나도 없을 시 (artifacts 가 없을 시)
         if not os.path.exists('artifacts/tfidf_vectorizer.pkl'):
-            subject_id = TbSubjectService.create_new_subject(session, request.sent_at, request.chat_id)
-
-            save_req_dto = TbKaMessageDto.SaveReqDto(
-                chat_id = request.chat_id,
-                client_message_id = request.client_message_id,
-                room_id = request.room_id,
-                last_sent_at = request.sent_at,
-                user_id = request.user_id,
-                message = request.message,
-                subject_id = subject_id,
-            )
-
-            tb_ka_message = TbKaMessageService.save_ka_message(session, save_req_dto)
-            return ValidateDto.ValidateResDto(
-                message_id = tb_ka_message.id,
-                is_duplicate = False,
-                subject_id = tb_ka_message.subject_id
-            )
+            return ValidateService.first_message_routine(request, session)
 
         # TF-IDF 벡터화 모델 로드
         with open('artifacts/tfidf_vectorizer.pkl', 'rb') as f:
@@ -124,3 +107,24 @@ class ValidateService:
 
         return res
 
+    @staticmethod
+    def first_message_routine(request: ValidateDto.ValidateReqDto, session: Session) -> ValidateDto.ValidateResDto:
+        subject_id = TbSubjectService.create_new_subject(session, request.sent_at, request.chat_id)
+
+        save_req_dto = TbKaMessageDto.SaveReqDto(
+            chat_id=request.chat_id,
+            client_message_id=request.client_message_id,
+            room_id=request.room_id,
+            last_sent_at=request.sent_at,
+            user_id=request.user_id,
+            message=request.message,
+            subject_id=subject_id,
+        )
+
+        tb_ka_message = TbKaMessageService.save_ka_message(session, save_req_dto)
+
+        return ValidateDto.ValidateResDto(
+            message_id=tb_ka_message.id,
+            is_duplicate=False,
+            subject_id=tb_ka_message.subject_id
+        )
