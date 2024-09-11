@@ -1,5 +1,9 @@
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
 from models import TbKaMessage
 from schemas.tb_ka_message_dto import TbKaMessageDto
+from schemas.validate_dto import ValidateDto
 from util.build_annoy_index import build_annoy_index
 
 
@@ -27,3 +31,21 @@ class TbKaMessageService:
             session.rollback()
             print(f"데이터 삽입 중 문제 발생: {e}")
             raise
+
+    @staticmethod
+    def update_when_duplicated(session: Session, dto: ValidateDto.ValidateReqDto, message_id: str):
+        session.execute(text(
+            """
+            UPDATE TbKaMessage
+            SET last_sent_at = :last_sent_at, chat_id = :chat_id, client_message_id = :client_message_id, room_id = :room_id, user_id = :user_id
+            WHERE id = :message_id
+            """
+        ), {
+            "message_id": message_id,
+            "last_sent_at": dto.sent_at,
+            "chat_id": dto.chat_id,
+            "client_message_id": dto.client_message_id,
+            "room_id": dto.room_id,
+            "user_id": dto.user_id
+        })
+        session.commit()
