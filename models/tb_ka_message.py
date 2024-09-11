@@ -1,14 +1,9 @@
 from sqlalchemy import Column, String, DateTime, BigInteger, Integer
 import uuid
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
-from sqlalchemy.dialects.mysql import INTEGER
-
+from util.date_tool import get_seoul_time
 from util.database import Base
 
-def get_seoul_time():
-    return datetime.now(ZoneInfo("Asia/Seoul"))
 
 class TbKaMessage(Base):
     __tablename__ = "TbKaMessage"
@@ -20,6 +15,7 @@ class TbKaMessage(Base):
     user_id = Column(BigInteger, nullable=False)
     message = Column(String(500), nullable=False)
     created_at = Column(DateTime, default=get_seoul_time)
+    updated_at = Column(DateTime, default=get_seoul_time, onupdate=get_seoul_time)
     last_sent_at = Column(Integer)
     deleted = Column(String(1), default="N")
     subject_id = Column(BigInteger, nullable=False)
