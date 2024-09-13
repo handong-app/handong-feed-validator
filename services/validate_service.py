@@ -5,9 +5,9 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from annoy import AnnoyIndex
 
+from util.build_annoy_index import build_annoy_index
 from services.tb_subject_service import TbSubjectService
 from services.tb_ka_message_service import TbKaMessageService
-from schemas.tb_ka_message_dto import TbKaMessageDto
 from schemas.validate_dto import ValidateDto
 from util.database import engine
 
@@ -18,7 +18,12 @@ class ValidateService:
     def process_validate(request: ValidateDto.ValidateReqDto, session: Session) -> ValidateDto.ValidateResDto:
         # case 1 : 기존 data 가 없는 경우 (artifacts 가 없는 경우)
         if not os.path.exists('artifacts/tfidf_vectorizer.pkl'):
-            return ValidateService.first_message_routine(request, session)
+            # Table 에 아예 data 가 없을 때
+            if TbKaMessageService.is_empty(session):
+                return ValidateService.new_message_routine(session, request)
+            # Artifacts 만 없을 때
+            else:
+                build_annoy_index()
 
         # 거리 계산 및 유사 message get
         distances_similar_items_dto = ValidateService.get_distances_and_similar_items(
@@ -42,70 +47,24 @@ class ValidateService:
         # case 2 : message 의 거리가 임계값 이상인 경우
         if distances[0] > threshold:
             print("새로운 메세지")
-            return ValidateService.first_message_routine(request, session)
+            return ValidateService.new_message_routine(session, request)
 
         # case 3 - 1 : message 의 거리가 0인 경우
-        elif distances[0] == 0:
-            print("중복 메세지 - 일치")
-            # 메시지가 완전히 일치하므로 기존 행의 last_sent_at 업데이트
-            ValidateService.update_duplicated(session, request, similar_subject_id, similar_message_id)
-
-            return ValidateDto.ValidateResDto(
-                message_id=similar_message_id,
-                is_duplicate=True,
-                subject_id=similar_subject_id
-            )
+        elif distances[0] == 0 and request.message == df.iloc[similar_items[0]]['message']:
+            print(f"중복 메세지 (거리: {distances[0]})")
+            return ValidateService.duplicate_message_routine(session, request, similar_subject_id, similar_message_id)
 
         # case 3 - 2 :  message 의 거리가 임계값 이하인 경우
         elif distances[0] <= threshold:
-            print("중복 메세지")
-            print("유사한 항목 인덱스:", similar_items[0])
-            print(f"중복된 메시지입니다. (거리: {distances[0]})")
-            print(f"유사한 메시지\n\n {df.iloc[similar_items[0]]['message']}")
+            print(f"유사 메세지 (거리: {distances[0]})")
+            return ValidateService.similar_message_routine(session, request, similar_subject_id)
 
-            # 중복 메시지에서 원본 메시지의 id를 가져옴.
-            original_id = df.iloc[similar_items[0]]['original_message_id']
-            print("original_id:",original_id)
-            # 만약 original_id가 Null 일 경우, 중복 메시지가 원본이다.
-            # original_id 설정해주고, 중복 횟수 1로 설정.
-            if original_id is None:
-                # original_id 를 중복 메시지의 id로 설정
-                original_id = df.iloc[similar_items[0]]['id']
-                print("유사메시지가 원본:",original_id)
-                new_duplicate_count = 1
-                print("new_duplicate_count:", new_duplicate_count)
-            else:
-                max_duplicate_count = df[df['original_message_id'] == original_id]['duplicate_count'].max()
-                print("max_duplicate_count:",max_duplicate_count)
-                new_duplicate_count = max_duplicate_count + 1
-                print("new_duplicate_count:",new_duplicate_count)
-
-
-            # DB에 추가
-            # ValidateService.db_insert(session, message_id, request.chat_id, request.client_message_id, request.room_id, request.sent_at,
-            #           request.user_id, request.message, current_time, new_duplicate_count, original_id)
-
-            print(f"중복된 메시지입니다. (원본 메시지 ID: {original_id}, 중복 횟수: {new_duplicate_count})")
-
-        return ValidateDto.ValidateResDto(
-                message_id=similar_message_id,
-                is_duplicate=True,
-                subject_id=similar_subject_id
-            )
 
     @staticmethod
-    def first_message_routine(request: ValidateDto.ValidateReqDto, session: Session) -> ValidateDto.ValidateResDto:
+    def new_message_routine(session: Session, request: ValidateDto.ValidateReqDto) -> ValidateDto.ValidateResDto:
         subject_id = TbSubjectService.create_new_subject(session, request.sent_at, request.chat_id)
 
-        save_req_dto = TbKaMessageDto.SaveReqDto(
-            chat_id=request.chat_id,
-            client_message_id=request.client_message_id,
-            room_id=request.room_id,
-            last_sent_at=request.sent_at,
-            user_id=request.user_id,
-            message=request.message,
-            subject_id=subject_id,
-        )
+        save_req_dto = request.to_save_req_dto(subject_id=subject_id)
 
         tb_ka_message = TbKaMessageService.save_ka_message(session, save_req_dto)
 
@@ -116,9 +75,27 @@ class ValidateService:
         )
 
     @staticmethod
-    def update_duplicated(session: Session, dto: ValidateDto.ValidateReqDto, subject_id: int, similar_message_id: str):
+    def duplicate_message_routine(session: Session, dto: ValidateDto.ValidateReqDto, similar_subject_id: int,
+                                  similar_message_id: str) -> ValidateDto.ValidateResDto:
         TbKaMessageService.update_when_duplicated(session, dto, similar_message_id)
-        TbSubjectService.update_last_sent_at(session, dto, subject_id)
+        TbSubjectService.update_last_sent_info(session, dto, similar_subject_id)
+
+        return ValidateDto.ValidateResDto(
+            message_id=similar_message_id,
+            is_duplicate=True,
+            subject_id=similar_subject_id
+        )
+
+    @staticmethod
+    def similar_message_routine(session: Session, dto: ValidateDto.ValidateReqDto, similar_subject_id: int) -> ValidateDto.ValidateResDto:
+        tb_ka_message = TbKaMessageService.save_ka_message(session, dto.to_save_req_dto(subject_id=similar_subject_id))
+        TbSubjectService.update_last_sent_info(session, dto, similar_subject_id)
+
+        return ValidateDto.ValidateResDto(
+            message_id = tb_ka_message.id,
+            is_duplicate = True,
+            subject_id = tb_ka_message.subject_id
+        )
 
     @staticmethod
     def get_distances_and_similar_items(dto: ValidateDto.GetDistanceServDto) -> ValidateDto.DistanceSimilarItemServDto:
