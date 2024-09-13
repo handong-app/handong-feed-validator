@@ -49,3 +49,14 @@ class TbKaMessageService:
             "user_id": dto.user_id
         })
         session.commit()
+
+    @staticmethod
+    def is_empty(session: Session):
+        try:
+            count = session.query(TbKaMessage).count()
+            if count == 0:
+                return True
+            else:
+                return False
+        except Exception as e:
+            print(f"오류 발생: {e}")
