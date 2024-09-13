@@ -22,7 +22,7 @@ class TbSubjectService:
             raise
 
     @staticmethod
-    def update_last_sent_at(session: Session, dto: ValidateDto.ValidateReqDto, subject_id: int):
+    def update_last_sent_info(session: Session, dto: ValidateDto.ValidateReqDto, subject_id: int):
         session.execute(text(
             """
             UPDATE TbSubject
@@ -32,22 +32,6 @@ class TbSubjectService:
         ), {
             "last_sent_at": dto.sent_at,
             "last_sent_chat_id": dto.chat_id,
-            "subject_id": subject_id
-        })
-
-        session.commit()
-
-    @staticmethod
-    def update_last_sent_chat(session: Session, chat_id: int, subject_id: int, sent_at: int):
-        session.execute(text(
-            """
-            UPDATE TbSubject
-            SET last_sent_at = :last_sent_at, last_sent_chat_id = :last_sent_chat_id
-            WHERE id = :subject_id
-            """
-        ), {
-            "last_sent_at": sent_at,
-            "last_sent_chat_id": chat_id,
             "subject_id": subject_id
         })
 
