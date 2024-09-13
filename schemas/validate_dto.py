@@ -1,5 +1,8 @@
 from pydantic import BaseModel
 
+from schemas.tb_ka_message_dto import TbKaMessageDto
+
+
 class ValidateDto:
     class ValidateReqDto(BaseModel):
         chat_id: int
@@ -8,6 +11,18 @@ class ValidateDto:
         user_id: int
         message: str
         sent_at: int
+
+        def to_save_req_dto(self, subject_id: int) -> TbKaMessageDto.SaveReqDto:
+            return TbKaMessageDto.SaveReqDto(
+            chat_id = self.chat_id,
+            client_message_id = self.client_message_id,
+            room_id = self.room_id,
+            last_sent_at = self.sent_at,
+            user_id = self.user_id,
+            message = self.message,
+            subject_id = subject_id,
+        )
+
 
     class ValidateResDto(BaseModel):
         message_id: str
