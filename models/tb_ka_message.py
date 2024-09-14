@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, BigInteger, Integer
+from sqlalchemy import Column, String, DateTime, BigInteger, Integer, Text
 import uuid
 
 from util.date_tool import get_seoul_time
@@ -13,7 +13,7 @@ class TbKaMessage(Base):
     client_message_id = Column(BigInteger, nullable=False)
     room_id = Column(BigInteger, nullable=False)
     user_id = Column(BigInteger, nullable=False)
-    message = Column(String(500), nullable=False)
+    message = Column(Text, nullable=False)
     created_at = Column(DateTime, default=get_seoul_time)
     updated_at = Column(DateTime, default=get_seoul_time, onupdate=get_seoul_time)
     last_sent_at = Column(Integer)
