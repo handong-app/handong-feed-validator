@@ -124,10 +124,17 @@ alembic downgrade <revision_id>
   ```json
   {
     "chat_id": 0,
-    "message": "New message" | "Duplicate message" | "Similar message, distance: {distance}",
+    "message": "message",
     "subject_id": 0
   }
    ```
+  - The message field can have one of the following values:
+      ```
+      "New message"
+      "Duplicate message"
+      "Similar message, distance: {distance}"
+      ```
+
 - If an error occurs 
   ```json
   {
