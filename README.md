@@ -1,6 +1,15 @@
 # Handong Feed Validator
 > - This project is a FastAPI-based system that compares request messages with existing messages in a database to detect duplicates based on message similarity using angular distance.
 
+## Table of Contents
+- [Key Features](#key-features)
+- [Installation](#installation)
+- [Installation and Setup](#installation-and-setup)
+- [Alembic Migration](#alembic-migration-for-reference)
+- [Database Schema Overview](#database-schema-overview)
+- [API Documentation](#api-documentation)
+- [Notes](#notes)
+
 ## Key Features
 
 1. **Efficient Duplicate Detection**: 
@@ -34,7 +43,7 @@ source .venv/bin/activate  # macOS/Linux
 .venv\Scripts\activate     # Windows
 ```
 
-### 2.Install required packages
+### 2. Install required packages
 
 ```bash
 pip install -r requirements.txt
