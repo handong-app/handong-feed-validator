@@ -1,10 +1,34 @@
-`# Handong Feed Validator
-> This project is a FastAPI-based system that compares user-inputted messages with existing messages in a database to detect duplicates based on similarity.
+# Handong Feed Validator
+> - This project is a FastAPI-based system that compares request messages with existing messages in a database to detect duplicates based on message similarity using angular distance.
+
+## Table of Contents
+- [Key Features](#key-features)
+- [Installation](#installation)
+- [Installation and Setup](#installation-and-setup)
+- [Alembic Migration](#alembic-migration-for-reference)
+- [Database Schema Overview](#database-schema-overview)
+- [API Documentation](#api-documentation)
+- [Notes](#notes)
 
 ## Key Features
-- Message similarity calculation using Annoy Index and TF-IDF.
-- Database storage of duplicate messages with tracking of duplicate count and original message ID.
-- Provides a RESTful API using FastAPI.
+
+1. **Efficient Duplicate Detection**: 
+   - Uses **TF-IDF vectorization** and **Annoy Index** to quickly compare new messages with existing ones, detecting duplicates based on **similarity**.
+
+2. **Threshold-Based Matching**: 
+   - Messages are considered duplicates only if they fall below a customizable similarity **threshold**.
+
+3. **Fast Similarity Search**: 
+   - Employs **Annoy (Approximate Nearest Neighbors)** for fast, scalable nearest neighbor search, ensuring real-time detection even with large datasets.
+
+4. **Automatic Index Rebuilding**: 
+   - After each new message, the **Annoy index** is automatically rebuilt to maintain up-to-date comparisons without manual intervention.
+
+5. **Subject Management**: 
+   - Groups related messages into **subjects**, tracking the latest message in each subject for efficient clustering.
+
+6. **Artifacts Storage**: 
+   - Saves and reloads the **TF-IDF model** and **Annoy index**, ensuring fast startup and efficient comparisons.
 
 ## Installation
 ```shell
@@ -19,7 +43,7 @@ source .venv/bin/activate  # macOS/Linux
 .venv\Scripts\activate     # Windows
 ```
 
-### 2.Install required packages
+### 2. Install required packages
 
 ```bash
 pip install -r requirements.txt
@@ -37,18 +61,7 @@ DB_PASSWORD=<your_db_password>
 DB_PORT=<your_db_port>  # Default is 3306
 ```
 
-## Initial Setup
-### 1. Generate Annoy Index and TF-IDF Vectorizer
-
-First, run the `build_annoy_index.py` script to create the Annoy index and TF-IDF vectorizer model.    
-This script will load existing messages from the database and build the index by vectorizing the messages.
-
-```bash
-python util/build_annoy_index.py
-```
-After running this script, the `artifacts/` folder will contain the `annoy_index.ann` and `tfidf_vectorizer.pkl` files.
-
-### 2. Run the Server
+### 4. Run the Server
 
 Once everything is set up, you can run the FastAPI server:
 
@@ -57,7 +70,7 @@ uvicorn main:app --reload
 ```
 The server will run by default at http://127.0.0.1:8000.
 
-## Alembic Migration
+## Alembic Migration (For reference)
 ### 1. Generating a Migration File
 After modifying your models, you need to create a migration file to update the database schema. To automatically generate a migration file based on the model changes, run the following command:
 ```shell
@@ -93,7 +106,7 @@ alembic downgrade <revision_id>
 ## API Documentation
 ### `/api/kafeed/validate` (POST)
 #### Description
->Receives a user-submitted message and checks for duplication by comparing it with existing messages in the database.
+>Receives message and checks for duplication by comparing it with existing messages in the database.
 
 #### Request Body
 ```json
@@ -110,9 +123,9 @@ alembic downgrade <revision_id>
 - On success
   ```json
   {
-      "message_id": "UUID",
-      "is_duplicate": true,
-      "subject_id": 0
+    "chat_id": 0,
+    "message": "New message" | "Duplicate message" | "Similar message, distance: {distance}",
+    "subject_id": 0
   }
    ```
 - If an error occurs 
@@ -132,5 +145,4 @@ alembic downgrade <revision_id>
   ```
 
 ## Notes
-- Ensure that the build_annoy_index.py script is run every time the message database is updated significantly, to keep the Annoy index up to date.
-- The threshold for considering a message as a duplicate can be adjusted in the ValidateService class within the code.
+- The threshold for considering a message as a similar message can be adjusted in the ValidateService class within the code.

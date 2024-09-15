@@ -5,6 +5,7 @@ from models import TbKaMessage
 from schemas.tb_ka_message_dto import TbKaMessageDto
 from schemas.validate_dto import ValidateDto
 from util.build_annoy_index import build_annoy_index
+from util.date_tool import get_seoul_time
 
 
 class TbKaMessageService:
@@ -18,6 +19,9 @@ class TbKaMessageService:
                 last_sent_at=save_req_dto.last_sent_at,
                 user_id=save_req_dto.user_id,
                 message=save_req_dto.message,
+                threshold=save_req_dto.threshold,
+                distance=save_req_dto.distance,
+                similar_id=save_req_dto.similar_id,
                 subject_id=save_req_dto.subject_id
             )
             session.add(new_message)
@@ -33,20 +37,26 @@ class TbKaMessageService:
             raise
 
     @staticmethod
-    def update_when_duplicated(session: Session, dto: ValidateDto.ValidateReqDto, message_id: str):
+    def update_when_duplicated(session: Session, dto: ValidateDto.ValidateReqDto,  additional_field_dto: TbKaMessageDto.AdditionalFieldServDto):
         session.execute(text(
+            # 중복메세지는 similar_id 값을 변경하지 않음.
+            # message 값이 정확히 일치하므로 변경하면 안된다.
             """
             UPDATE TbKaMessage
-            SET last_sent_at = :last_sent_at, chat_id = :chat_id, client_message_id = :client_message_id, room_id = :room_id, user_id = :user_id
-            WHERE id = :message_id
+            SET chat_id = :chat_id, client_message_id = :client_message_id, room_id = :room_id, user_id = :user_id, 
+                threshold = :threshold, distance = :distance, last_sent_at = :last_sent_at, updated_at = :updated_at
+            WHERE id = :similar_id
             """
         ), {
-            "message_id": message_id,
-            "last_sent_at": dto.sent_at,
             "chat_id": dto.chat_id,
             "client_message_id": dto.client_message_id,
             "room_id": dto.room_id,
-            "user_id": dto.user_id
+            "user_id": dto.user_id,
+            "similar_id": additional_field_dto.similar_id,
+            "threshold": additional_field_dto.threshold,
+            "distance": additional_field_dto.distance,
+            "last_sent_at": dto.sent_at,
+            "updated_at": get_seoul_time()
         })
         session.commit()
 

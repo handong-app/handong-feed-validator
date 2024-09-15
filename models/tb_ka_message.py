@@ -1,5 +1,5 @@
-from sqlalchemy import Column, String, DateTime, BigInteger, Integer, Text
 import uuid
+from sqlalchemy import Column, String, DateTime, BigInteger, Integer, Text, Float
 
 from util.date_tool import get_seoul_time
 from util.database import Base
@@ -14,6 +14,9 @@ class TbKaMessage(Base):
     room_id = Column(BigInteger, nullable=False)
     user_id = Column(BigInteger, nullable=False)
     message = Column(Text, nullable=False)
+    distance = Column(Float, nullable=False)
+    threshold = Column(Float, nullable=False)
+    similar_id = Column(String(32), nullable=False)
     created_at = Column(DateTime, default=get_seoul_time)
     updated_at = Column(DateTime, default=get_seoul_time, onupdate=get_seoul_time)
     last_sent_at = Column(Integer)

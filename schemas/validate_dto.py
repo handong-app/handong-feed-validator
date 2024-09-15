@@ -12,21 +12,24 @@ class ValidateDto:
         message: str
         sent_at: int
 
-        def to_save_req_dto(self, subject_id: int) -> TbKaMessageDto.SaveReqDto:
+        def to_save_req_dto(self, additional_fields: TbKaMessageDto.AdditionalFieldServDto) -> TbKaMessageDto.SaveReqDto:
             return TbKaMessageDto.SaveReqDto(
+            room_id = self.room_id,
             chat_id = self.chat_id,
             client_message_id = self.client_message_id,
-            room_id = self.room_id,
-            last_sent_at = self.sent_at,
             user_id = self.user_id,
+            subject_id = additional_fields.subject_id,
             message = self.message,
-            subject_id = subject_id,
+            threshold = additional_fields.threshold,
+            distance = additional_fields.distance,
+            similar_id = additional_fields.similar_id,
+            last_sent_at = self.sent_at,
         )
 
 
     class ValidateResDto(BaseModel):
-        message_id: str
-        is_duplicate: bool
+        chat_id: int
+        message: str
         subject_id: int
 
     class GetDistanceServDto(BaseModel):
@@ -36,12 +39,3 @@ class ValidateDto:
     class DistanceSimilarItemServDto(BaseModel):
         distances: list
         similar_items: list
-
-    class UpdateDuplicateMessageServDto(BaseModel):
-        chat_id: int
-        client_message_id: int
-        room_id: int
-        user_id: int
-        message: str
-        sent_at: int
-        subject_id: int
