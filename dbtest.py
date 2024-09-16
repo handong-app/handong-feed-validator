@@ -19,7 +19,7 @@ def get_latest_last_sent_at():
 
             row = result.fetchone()
             print(row)
-            if row:
+            if row and row[0]:
                 return row[0]
             return 0
 
