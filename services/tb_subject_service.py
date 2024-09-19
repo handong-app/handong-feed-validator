@@ -34,5 +34,5 @@ class TbSubjectService:
             "last_sent_chat_id": dto.chat_id,
             "subject_id": subject_id
         })
-
+        #  여기 update_at 최신화 하는거 넣어야함
         session.commit()
