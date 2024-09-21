@@ -114,7 +114,7 @@ class ValidateService:
         TbSubjectService.update_last_sent_info(session, validate_req_dto, additional_field_dto.subject_id)
 
         return ValidateDto.ValidateResDto(
-            message_id = validate_req_dto.id,
+            message_id = additional_field_dto.similar_id,
             chat_id = validate_req_dto.chat_id,
             message = "Duplicate message",
             subject_id = additional_field_dto.subject_id
