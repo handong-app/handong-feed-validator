@@ -28,6 +28,7 @@ class ValidateDto:
 
 
     class ValidateResDto(BaseModel):
+        message_id: str
         chat_id: int
         message: str
         subject_id: int
