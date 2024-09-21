@@ -102,6 +102,7 @@ class ValidateService:
         tb_ka_message = TbKaMessageService.save_ka_message(session, save_req_dto)
 
         return ValidateDto.ValidateResDto(
+            message_id = tb_ka_message.id,
             chat_id = tb_ka_message.chat_id,
             message = "New message",
             subject_id = tb_ka_message.subject_id,
@@ -113,6 +114,7 @@ class ValidateService:
         TbSubjectService.update_last_sent_info(session, dto, additional_field_dto.subject_id)
 
         return ValidateDto.ValidateResDto(
+            message_id = dto.id,
             chat_id = dto.chat_id,
             message = "Duplicate message",
             subject_id = additional_field_dto.subject_id
@@ -124,6 +126,7 @@ class ValidateService:
         TbSubjectService.update_last_sent_info(session, dto, additional_field_dto.subject_id)
 
         return ValidateDto.ValidateResDto(
+            message_id = tb_ka_message.id,
             chat_id = tb_ka_message.chat_id,
             message = f"Similar message, distance: {additional_field_dto.distance}",
             subject_id = tb_ka_message.subject_id
