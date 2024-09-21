@@ -19,7 +19,7 @@ class ValidateService:
     def process_validate(request: ValidateDto.ValidateReqDto, session: Session) -> ValidateDto.ValidateResDto:
         # 0에 가까울 수록 유사한 정도가 높다. 0은 완전히 같은 것이다.
         # 중복 아닌 것을 중복 처리 하는 것 보다, 중복인 것을 못잡는 상황이 더 낫다고 판단 -> 임계값 하향 조정.
-        threshold = 1.08
+        threshold = 0.8
 
         # case 1 : 기존 data 가 없는 경우 (artifacts 가 없는 경우)
         if not os.path.exists('artifacts/tfidf_vectorizer.pkl'):
