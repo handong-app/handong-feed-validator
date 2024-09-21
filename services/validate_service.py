@@ -19,7 +19,7 @@ class ValidateService:
     def process_validate(request: ValidateDto.ValidateReqDto, session: Session) -> ValidateDto.ValidateResDto:
         # 0에 가까울 수록 유사한 정도가 높다. 0은 완전히 같은 것이다.
         # 중복 아닌 것을 중복 처리 하는 것 보다, 중복인 것을 못잡는 상황이 더 낫다고 판단 -> 임계값 하향 조정.
-        threshold = 1.08
+        threshold = 0.8
 
         # case 1 : 기존 data 가 없는 경우 (artifacts 가 없는 경우)
         if not os.path.exists('artifacts/tfidf_vectorizer.pkl'):
@@ -95,10 +95,10 @@ class ValidateService:
 
 
     @staticmethod
-    def new_message_routine(session: Session, request: ValidateDto.ValidateReqDto, additional_field_dto: TbKaMessageDto.AdditionalFieldServDto) -> ValidateDto.ValidateResDto:
-        subject_id = TbSubjectService.create_new_subject(session, request.sent_at, request.chat_id)
+    def new_message_routine(session: Session, validate_req_dto: ValidateDto.ValidateReqDto, additional_field_dto: TbKaMessageDto.AdditionalFieldServDto) -> ValidateDto.ValidateResDto:
+        subject_id = TbSubjectService.create_new_subject(session, validate_req_dto.sent_at, validate_req_dto.chat_id)
         additional_field_dto.subject_id = subject_id
-        save_req_dto = request.to_save_req_dto(additional_field_dto)
+        save_req_dto = validate_req_dto.to_save_req_dto(additional_field_dto)
         tb_ka_message = TbKaMessageService.save_ka_message(session, save_req_dto)
 
         return ValidateDto.ValidateResDto(
@@ -109,21 +109,21 @@ class ValidateService:
         )
 
     @staticmethod
-    def duplicate_message_routine(session: Session, dto: ValidateDto.ValidateReqDto, additional_field_dto: TbKaMessageDto.AdditionalFieldServDto) -> ValidateDto.ValidateResDto:
-        TbKaMessageService.update_when_duplicated(session, dto,  additional_field_dto)
-        TbSubjectService.update_last_sent_info(session, dto, additional_field_dto.subject_id)
+    def duplicate_message_routine(session: Session, validate_req_dto: ValidateDto.ValidateReqDto, additional_field_dto: TbKaMessageDto.AdditionalFieldServDto) -> ValidateDto.ValidateResDto:
+        TbKaMessageService.update_when_duplicated(session, validate_req_dto, additional_field_dto)
+        TbSubjectService.update_last_sent_info(session, validate_req_dto, additional_field_dto.subject_id)
 
         return ValidateDto.ValidateResDto(
-            message_id = dto.id,
-            chat_id = dto.chat_id,
+            message_id = validate_req_dto.id,
+            chat_id = validate_req_dto.chat_id,
             message = "Duplicate message",
             subject_id = additional_field_dto.subject_id
         )
 
     @staticmethod
-    def similar_message_routine(session: Session, dto: ValidateDto.ValidateReqDto, additional_field_dto: TbKaMessageDto.AdditionalFieldServDto) -> ValidateDto.ValidateResDto:
-        tb_ka_message = TbKaMessageService.save_ka_message(session, dto.to_save_req_dto(additional_field_dto))
-        TbSubjectService.update_last_sent_info(session, dto, additional_field_dto.subject_id)
+    def similar_message_routine(session: Session, validate_req_dto: ValidateDto.ValidateReqDto, additional_field_dto: TbKaMessageDto.AdditionalFieldServDto) -> ValidateDto.ValidateResDto:
+        tb_ka_message = TbKaMessageService.save_ka_message(session, validate_req_dto.to_save_req_dto(additional_field_dto))
+        TbSubjectService.update_last_sent_info(session, validate_req_dto, additional_field_dto.subject_id)
 
         return ValidateDto.ValidateResDto(
             message_id = tb_ka_message.id,
@@ -133,7 +133,7 @@ class ValidateService:
         )
 
     @staticmethod
-    def get_distances_and_similar_items(dto: ValidateDto.GetDistanceServDto) -> ValidateDto.DistanceSimilarItemServDto:
+    def get_distances_and_similar_items(get_distance_serv_dto: ValidateDto.GetDistanceServDto) -> ValidateDto.DistanceSimilarItemServDto:
         # TF-IDF 벡터화 모델 로드
         with open('artifacts/tfidf_vectorizer.pkl', 'rb') as f:
             tfidf_vectorizer = pickle.load(f)
@@ -144,10 +144,10 @@ class ValidateService:
         annoy_index.load('artifacts/annoy_index.ann')
 
         # 입력된 텍스트 TF-IDF 벡터화
-        request_message_vector = tfidf_vectorizer.transform([dto.message]).toarray().flatten()
+        request_message_vector = tfidf_vectorizer.transform([get_distance_serv_dto.message]).toarray().flatten()
 
         # 유사한 메시지 검색
-        similar_items, distances = annoy_index.get_nns_by_vector(request_message_vector, dto.n_similar, include_distances=True)
+        similar_items, distances = annoy_index.get_nns_by_vector(request_message_vector, get_distance_serv_dto.n_similar, include_distances=True)
 
         return ValidateDto.DistanceSimilarItemServDto(
             distances = distances,
