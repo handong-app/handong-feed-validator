@@ -73,13 +73,18 @@ class ValidateService:
                     if distances[idx] != 0.0:
                         break
                     if request.message == df.iloc[similar_items[idx]]['message']:
-                        print(f"중복 메세지 (거리: {distances[0]})")
+                        print(f"중복 메세지 (거리: {distances[0]}, 중복 메세지는 거리 -2로 저장)")
+                        """
+                        24.10.29
+                        이미지 증식 이슈로 인해 중복 메세지도 새로 DB에 추가하는 방향으로 진행함.
+                        cf) 중복 메세지의 거리는 -2로 저장 (-1은 DB상 최초 메세지의 거리)
+                        """
                         return ValidateService.duplicate_message_routine(
                             session, request,
                             TbKaMessageDto.AdditionalFieldServDto(
                                 subject_id = similar_subject_id,
                                 threshold = threshold,
-                                distance = df.iloc[similar_items[idx]]['distance'],
+                                distance = -2,
                                 similar_id = similar_id))
                     idx += 1
                 print("중복 아님")
@@ -110,7 +115,8 @@ class ValidateService:
 
     @staticmethod
     def duplicate_message_routine(session: Session, validate_req_dto: ValidateDto.ValidateReqDto, additional_field_dto: TbKaMessageDto.AdditionalFieldServDto) -> ValidateDto.ValidateResDto:
-        TbKaMessageService.update_when_duplicated(session, validate_req_dto, additional_field_dto)
+        # TbKaMessageService.update_when_duplicated(session, validate_req_dto, additional_field_dto)
+        tb_ka_message = TbKaMessageService.save_ka_message(session, validate_req_dto.to_save_req_dto(additional_field_dto))
         TbSubjectService.update_last_sent_info(session, validate_req_dto, additional_field_dto.subject_id)
 
         return ValidateDto.ValidateResDto(
