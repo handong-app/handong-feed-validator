@@ -3,7 +3,6 @@
 
 ## Table of Contents
 - [Key Features](#key-features)
-- [Installation](#installation)
 - [Installation and Setup](#installation-and-setup)
 - [Alembic Migration](#alembic-migration-for-reference)
 - [Database Schema Overview](#database-schema-overview)
@@ -29,11 +28,6 @@
 
 6. **Artifacts Storage**: 
    - Saves and reloads the **TF-IDF model** and **Annoy index**, ensuring fast startup and efficient comparisons.
-
-## Installation
-```shell
-pip install -r requirements.txt
-```
 
 ## Installation and Setup
 ### 1. Set up a Python virtual environment (optional but recommended)
