@@ -6,7 +6,7 @@ import pickle
 from util.database import engine
 from config.constants import LocalPath
 
-def build_annoy_index():
+def build_annoy_index_all():
     # artifacts 경로가 없으면 생성
     os.makedirs(LocalPath.ARTIFACTS, exist_ok=True)
 
