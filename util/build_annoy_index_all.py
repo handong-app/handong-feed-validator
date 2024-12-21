@@ -4,11 +4,11 @@ from annoy import AnnoyIndex
 from sklearn.feature_extraction.text import TfidfVectorizer
 import pickle
 from util.database import engine
-from config.constants import ANNOY_INDEX_ALL, TFIDF_VECTORIZER_ALL
+from config.constants import LocalPath
 
 def build_annoy_index():
     # artifacts 경로가 없으면 생성
-    os.makedirs('./artifacts', exist_ok=True)
+    os.makedirs(LocalPath.ARTIFACTS, exist_ok=True)
 
     with engine.connect() as connection:
         df = pd.read_sql_table('TbKaMessage', con=connection)
@@ -26,8 +26,8 @@ def build_annoy_index():
         annoy_index.add_item(i, vector)
 
     annoy_index.build(n_trees=10)
-    annoy_index.save(ANNOY_INDEX_ALL)
+    annoy_index.save(LocalPath.ANNOY_INDEX_ALL)
 
     # TF-IDF 벡터화 모델 저장
-    with open(TFIDF_VECTORIZER_ALL, 'wb') as f:
+    with open(LocalPath.TFIDF_VECTORIZER_ALL, 'wb') as f:
         pickle.dump(tfidf_vectorizer, f)
