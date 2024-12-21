@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from models import TbKaMessage
 from schemas.tb_ka_message_dto import TbKaMessageDto
 from schemas.validate_dto import ValidateDto
-from util.build_annoy_index import build_annoy_index
+from util.build_annoy_index_last_14days import build_annoy_index_last_14days
 from util.date_tool import get_seoul_time
 
 
@@ -28,7 +28,7 @@ class TbKaMessageService:
             session.commit()
 
             # 새 Message 저장 후 index build
-            build_annoy_index()
+            build_annoy_index_last_14days()
 
             return new_message
         except Exception as e:

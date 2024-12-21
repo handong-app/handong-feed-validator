@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from annoy import AnnoyIndex
 
 from schemas.tb_ka_message_dto import TbKaMessageDto
-from util.build_annoy_index import build_annoy_index
+from util.build_annoy_index_last_14days import build_annoy_index_last_14days
 from services.tb_subject_service import TbSubjectService
 from services.tb_ka_message_service import TbKaMessageService
 from schemas.validate_dto import ValidateDto
@@ -35,7 +35,7 @@ class ValidateService:
             # Artifacts 만 없을 때
             else:
                 print("Artifacts 없음, 생성후 routine 시작")
-                build_annoy_index()
+                build_annoy_index_last_14days()
 
         # 거리 계산 및 유사 message get
         distances_similar_items_dto = ValidateService.get_distances_and_similar_items(
