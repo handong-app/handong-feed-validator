@@ -38,3 +38,7 @@ def build_annoy_index_last_14days():
     # TF-IDF 벡터화 모델 저장
     with open(LocalPath.TFIDF_VECTORIZER_LAST_14DAYS, 'wb') as f:
         pickle.dump(tfidf_vectorizer, f)
+
+    # 데이터 프레임 저장
+    with open(LocalPath.LAST_14DAYS_DF, 'wb') as f:
+        pickle.dump(df, f)
