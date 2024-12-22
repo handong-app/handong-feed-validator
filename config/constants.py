@@ -6,4 +6,4 @@ class LocalPath:
     TFIDF_VECTORIZER_LAST_14DAYS = './artifacts/tfidf_vectorizer_last_14days.pkl'
 
 class DatabaseConfig:
-    GET_TbKaMessage_LAST_14DAYS = "SELECT * FROM TbKaMessage WHERE created_at >= NOW() - INTERVAL 14 DAY"
+    GET_TbKaMessage_LAST_14DAYS = "SELECT * FROM TbKaMessage WHERE updated_at >= NOW() - INTERVAL 14 DAY"
