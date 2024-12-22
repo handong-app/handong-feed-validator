@@ -11,7 +11,7 @@ from services.tb_subject_service import TbSubjectService
 from services.tb_ka_message_service import TbKaMessageService
 from schemas.validate_dto import ValidateDto
 from util.database import engine
-
+from config.constants import LocalPath
 
 
 class ValidateService:
@@ -22,9 +22,9 @@ class ValidateService:
         threshold = 0.8
 
         # case 1 : 기존 data 가 없는 경우 (artifacts 가 없는 경우)
-        if not os.path.exists('artifacts/tfidf_vectorizer.pkl'):
+        if not os.path.exists(LocalPath.TFIDF_VECTORIZER_LAST_14DAYS):
             # Table 에 아예 data 가 없을 때
-            if TbKaMessageService.is_empty(session):
+            if TbKaMessageService.is_empty_last_14days(session):
                 print("첫 메세지, new_message_routine 실행")
                 return ValidateService.new_message_routine(
                     session, request,
@@ -72,6 +72,10 @@ class ValidateService:
                 for idx in range(len(similar_items)):
                     if distances[idx] != 0.0:
                         break
+                    print("New message")
+                    print(request.message)
+                    print("Similar message", idx)
+                    print(df.iloc[similar_items[idx]]['message'])
                     if request.message == df.iloc[similar_items[idx]]['message']:
                         print(f"중복 메세지 (거리: {distances[0]}, 중복 메세지는 거리 -2로 저장)")
                         """
@@ -141,13 +145,13 @@ class ValidateService:
     @staticmethod
     def get_distances_and_similar_items(get_distance_serv_dto: ValidateDto.GetDistanceServDto) -> ValidateDto.DistanceSimilarItemServDto:
         # TF-IDF 벡터화 모델 로드
-        with open('artifacts/tfidf_vectorizer.pkl', 'rb') as f:
+        with open(LocalPath.TFIDF_VECTORIZER_LAST_14DAYS, 'rb') as f:
             tfidf_vectorizer = pickle.load(f)
 
         # Annoy 인덱스 로드
         f = len(tfidf_vectorizer.get_feature_names_out())
         annoy_index = AnnoyIndex(f, 'angular')
-        annoy_index.load('artifacts/annoy_index.ann')
+        annoy_index.load(LocalPath.ANNOY_INDEX_LAST_14DAYS)
 
         # 입력된 텍스트 TF-IDF 벡터화
         request_message_vector = tfidf_vectorizer.transform([get_distance_serv_dto.message]).toarray().flatten()
