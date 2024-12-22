@@ -22,7 +22,7 @@ class ValidateService:
         threshold = 0.8
 
         # case 1 : 기존 data 가 없는 경우 (artifacts 가 없는 경우)
-        if not os.path.exists(LocalPath.TFIDF_VECTORIZER_LAST_14DAYS):
+        if not ValidateService.all_artifacts_exist():
             # Table 에 아예 data 가 없을 때
             if TbKaMessageService.is_empty_last_14days(session):
                 print("첫 메세지, new_message_routine 실행")
@@ -34,7 +34,7 @@ class ValidateService:
                         similar_id = "FIRST MESSAGE"))
             # Artifacts 만 없을 때
             else:
-                print("Artifacts 없음, 생성후 routine 시작")
+                print("Artifacts 필수 파일 없음, 생성 후 routine 시작")
                 build_annoy_index_last_14days()
 
         # 거리 계산 및 유사 message get
@@ -45,12 +45,15 @@ class ValidateService:
         distances, similar_items = distances_similar_items_dto.distances, distances_similar_items_dto.similar_items
 
         # 기존 메시지 로드
-        with engine.connect() as connection:
-            df = pd.read_sql_table('TbKaMessage', con=connection)
+        # with engine.connect() as connection:
+        #     df = pd.read_sql_table('TbKaMessage', con=connection)
+
+        with open(LocalPath.LAST_14DAYS_DF, 'rb') as f:
+            df_14days = pickle.load(f)
 
         # 가장 유사한 메세지의 정보
-        similar_id = df.iloc[similar_items[0]]['id']
-        similar_subject_id = df.iloc[similar_items[0]]['subject_id']
+        similar_id = df_14days.iloc[similar_items[0]]['id']
+        similar_subject_id = df_14days.iloc[similar_items[0]]['subject_id']
 
         print("거리 측정 끝, 케이스 판별 시작")
         # case 2 : message 의 거리가 임계값 이상인 경우
@@ -75,8 +78,8 @@ class ValidateService:
                     print("New message")
                     print(request.message)
                     print("Similar message", idx)
-                    print(df.iloc[similar_items[idx]]['message'])
-                    if request.message == df.iloc[similar_items[idx]]['message']:
+                    print(df_14days.iloc[similar_items[idx]]['message'])
+                    if request.message == df_14days.iloc[similar_items[idx]]['message']:
                         print(f"중복 메세지 (거리: {distances[0]}, 중복 메세지는 거리 -2로 저장)")
                         """
                         24.10.29
@@ -163,3 +166,12 @@ class ValidateService:
             distances = distances,
             similar_items = similar_items
         )
+
+    @staticmethod
+    def all_artifacts_exist() -> bool:
+        required_files = [
+            LocalPath.ANNOY_INDEX_LAST_14DAYS,
+            LocalPath.TFIDF_VECTORIZER_LAST_14DAYS,
+            LocalPath.LAST_14DAYS_DF
+        ]
+        return all(os.path.exists(file) for file in required_files)
