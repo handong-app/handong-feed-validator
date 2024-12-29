@@ -1,109 +1,138 @@
-import os
-import pickle
-import pandas as pd
+import asyncio
 
 from sqlalchemy.orm import Session
-from annoy import AnnoyIndex
+from typing import List
 
+from schemas.bulk_validate_dto import BulkValidateDto
 from schemas.tb_ka_message_dto import TbKaMessageDto
-from util.build_annoy_index_last_14days import build_annoy_index_last_14days
 from services.tb_subject_service import TbSubjectService
 from services.tb_ka_message_service import TbKaMessageService
+from services.index_manager import IndexManager
 from schemas.validate_dto import ValidateDto
-from util.database import engine
-from config.constants import LocalPath
+from util.database import SessionLocal
+from util.io_utils import output_ln
 
 
 class ValidateService:
     @staticmethod
-    def process_validate(request: ValidateDto.ValidateReqDto, session: Session) -> ValidateDto.ValidateResDto:
-        # 0에 가까울 수록 유사한 정도가 높다. 0은 완전히 같은 것이다.
+    async def process_bulk_validate (bulk_request: BulkValidateDto.BulkValidateReqDto,
+        db: Session
+    ) -> List[ValidateDto.ValidateResDto]:
+
+        # 1. 인덱스 상태 확인 및 빌드 (최신 상태 보장)
+        IndexManager.ensure_index()
+
+        # 2. 비동기로 요청 처리
+        tasks = [
+            asyncio.to_thread(ValidateService.validate, req, db)
+            for req in bulk_request.requests
+        ]
+        results = await asyncio.gather(*tasks)
+        return results
+
+    @staticmethod
+    def process_single_validate (request: ValidateDto.ValidateReqDto, db: Session) -> ValidateDto.ValidateResDto:
+        # 1. 인덱스 상태 확인 및 빌드 (최신 상태 보장)
+        IndexManager.ensure_index()
+
+        # 2. 요청 처리
+        return ValidateService.validate(request, db)
+
+    @staticmethod
+    def validate(request: ValidateDto.ValidateReqDto, session: Session) -> ValidateDto.ValidateResDto:
+        # validate 내부에서 독립적인 DB 세션 생성
+        with SessionLocal() as local_session:
+            return ValidateService._perform_validation(request, local_session)
+
+    @staticmethod
+    def _perform_validation(request: ValidateDto.ValidateReqDto, session: Session) -> ValidateDto.ValidateResDto:
+        """주어진 요청 메시지에 대해 Annoy 인덱스를 사용해 유사 메시지 검색 및 처리로직 수행."""
+
+        # 임계값 설정 (유사도 기준)
+        # 0에 가까울 수록 유사한 정도가 높다.
         # 중복 아닌 것을 중복 처리 하는 것 보다, 중복인 것을 못잡는 상황이 더 낫다고 판단 -> 임계값 하향 조정.
         threshold = 0.8
 
-        # case 1 : 기존 data 가 없는 경우 (artifacts 가 없는 경우)
-        if not ValidateService.all_artifacts_exist():
-            # Table 에 아예 data 가 없을 때
-            if TbKaMessageService.is_empty_last_14days(session):
-                print("첫 메세지, new_message_routine 실행")
-                return ValidateService.new_message_routine(
-                    session, request,
-                    TbKaMessageDto.AdditionalFieldServDto(
-                        threshold = threshold,
-                        distance = -1,
-                        similar_id = "FIRST MESSAGE"))
-            # Artifacts 만 없을 때
-            else:
-                print("Artifacts 필수 파일 없음, 생성 후 routine 시작")
-                build_annoy_index_last_14days()
+        # 1. Annoy 인덱스, TF-IDF vectorizer, 14일치 데이터 로드
+        vectorizer = IndexManager.load_tfidf_vectorizer()
+        annoy_index = IndexManager.load_annoy_index(vectorizer)
+        df_14days = IndexManager.load_last_14days_dataframe()
 
-        # 거리 계산 및 유사 message get
-        distances_similar_items_dto = ValidateService.get_distances_and_similar_items(
-            ValidateDto.GetDistanceServDto(
-                message = request.message,
-                n_similar = 1))
-        distances, similar_items = distances_similar_items_dto.distances, distances_similar_items_dto.similar_items
+        # 2. 메시지를 TF-IDF 벡터화
+        request_vector = vectorizer.transform([request.message]).toarray().flatten()
 
-        # 기존 메시지 로드
-        # with engine.connect() as connection:
-        #     df = pd.read_sql_table('TbKaMessage', con=connection)
+        # 3. Annoy 인덱스를 사용해 유사 메시지 검색
+        similar_items, distances = annoy_index.get_nns_by_vector(
+            request_vector,
+            n=1,  # 가장 유사한 메시지 1개만 검색
+            include_distances=True
+        )
+        
+        # 4. 유사 메시지가 없으면 새로운 메시지로 처리
+        if not similar_items or distances[0] > threshold:
+            output_ln("case 2: 새로운 메세지")
+            return ValidateService.new_message_routine(
+                session,
+                request,
+                TbKaMessageDto.AdditionalFieldServDto(
+                    threshold=threshold,
+                    distance=distances[0] if similar_items else -1,
+                    similar_id="NEW_MESSAGE"
+                )
+            )
 
-        with open(LocalPath.LAST_14DAYS_DF, 'rb') as f:
-            df_14days = pickle.load(f)
-
-        # 가장 유사한 메세지의 정보
+        # 5. 유사 메시지가 있으면 추가 정보 로드
         similar_id = df_14days.iloc[similar_items[0]]['id']
         similar_subject_id = df_14days.iloc[similar_items[0]]['subject_id']
 
-        print("거리 측정 끝, 케이스 판별 시작")
-        # case 2 : message 의 거리가 임계값 이상인 경우
-        if distances[0] > threshold:
-            print("case 2: 새로운 메세지")
-            return ValidateService.new_message_routine(
-                session, request,
-                TbKaMessageDto.AdditionalFieldServDto(
-                    threshold = threshold,
-                    distance = distances[0],
-                    similar_id = similar_id))
+        output_ln("거리 측정 끝, 케이스 판별 시작")
+        # case 3: 유사 메시지가 존재
+        if distances[0] <= threshold:
+            output_ln("거리가 임계값 이하, case 3 판별 시작")
 
-        elif distances[0] <= threshold:
-            print("거리가 임계값 이하, case 3 판별 시작")
-            # case 3 - 1 : message 의 거리가 0인 경우
+            # 3-1: 거리가 0인 경우, 완전히 동일한 메시지로 판단
             if distances[0] == 0.0:
-                print("distances[0] == 0.0 이므로 중복 판별 시작")
-                print("len(similar_items) : ",len(similar_items))
+                output_ln("distances[0] == 0.0 이므로 중복 판별 시작")
                 for idx in range(len(similar_items)):
                     if distances[idx] != 0.0:
                         break
-                    print("New message")
-                    print(request.message)
-                    print("Similar message", idx)
-                    print(df_14days.iloc[similar_items[idx]]['message'])
                     if request.message == df_14days.iloc[similar_items[idx]]['message']:
-                        print(f"중복 메세지 (거리: {distances[0]}, 중복 메세지는 거리 -2로 저장)")
-                        """
-                        24.10.29
-                        이미지 증식 이슈로 인해 중복 메세지도 새로 DB에 추가하는 방향으로 진행함.
-                        cf) 중복 메세지의 거리는 -2로 저장 (-1은 DB상 최초 메세지의 거리)
-                        """
+                        output_ln(f"중복 메세지 (거리: {distances[0]}, 중복 메세지는 거리 -2로 저장)")
                         return ValidateService.duplicate_message_routine(
-                            session, request,
+                            session,
+                            request,
                             TbKaMessageDto.AdditionalFieldServDto(
-                                subject_id = similar_subject_id,
-                                threshold = threshold,
-                                distance = -2,
-                                similar_id = similar_id))
-                    idx += 1
-                print("중복 아님")
-            # case 3 - 2 :  message 의 거리가 임계값 이하인 경우
-            print(f"유사 메세지 (거리: {distances[0]})")
+                                subject_id=similar_subject_id,
+                                threshold=threshold,
+                                distance=-2,  # 중복 메시지 거리 설정
+                                similar_id=similar_id
+                            )
+                        )
+                output_ln("중복 아님")
+
+            # 3-2: 거리가 임계값 이하인 경우, 유사 메시지로 처리
+            output_ln(f"유사 메세지 (거리: {distances[0]})")
             return ValidateService.similar_message_routine(
-                session, request,
+                session,
+                request,
                 TbKaMessageDto.AdditionalFieldServDto(
-                    subject_id = similar_subject_id,
-                    threshold = threshold,
-                    distance = distances[0],
-                    similar_id = similar_id))
+                    subject_id=similar_subject_id,
+                    threshold=threshold,
+                    distance=distances[0],
+                    similar_id=similar_id
+                )
+            )
+
+        # 기본적으로 새로운 메시지로 처리
+        return ValidateService.new_message_routine(
+            session,
+            request,
+            TbKaMessageDto.AdditionalFieldServDto(
+                threshold=threshold,
+                distance=-1,
+                similar_id="NEW_MESSAGE"
+            )
+        )
 
 
     @staticmethod
@@ -145,33 +174,25 @@ class ValidateService:
             subject_id = tb_ka_message.subject_id
         )
 
-    @staticmethod
-    def get_distances_and_similar_items(get_distance_serv_dto: ValidateDto.GetDistanceServDto) -> ValidateDto.DistanceSimilarItemServDto:
-        # TF-IDF 벡터화 모델 로드
-        with open(LocalPath.TFIDF_VECTORIZER_LAST_14DAYS, 'rb') as f:
-            tfidf_vectorizer = pickle.load(f)
-
-        # Annoy 인덱스 로드
-        f = len(tfidf_vectorizer.get_feature_names_out())
-        annoy_index = AnnoyIndex(f, 'angular')
-        annoy_index.load(LocalPath.ANNOY_INDEX_LAST_14DAYS)
-
-        # 입력된 텍스트 TF-IDF 벡터화
-        request_message_vector = tfidf_vectorizer.transform([get_distance_serv_dto.message]).toarray().flatten()
-
-        # 유사한 메시지 검색
-        similar_items, distances = annoy_index.get_nns_by_vector(request_message_vector, get_distance_serv_dto.n_similar, include_distances=True)
-
-        return ValidateDto.DistanceSimilarItemServDto(
-            distances = distances,
-            similar_items = similar_items
-        )
-
-    @staticmethod
-    def all_artifacts_exist() -> bool:
-        required_files = [
-            LocalPath.ANNOY_INDEX_LAST_14DAYS,
-            LocalPath.TFIDF_VECTORIZER_LAST_14DAYS,
-            LocalPath.LAST_14DAYS_DF
-        ]
-        return all(os.path.exists(file) for file in required_files)
+    # @staticmethod
+    # def get_distances_and_similar_items(get_distance_serv_dto: ValidateDto.GetDistanceServDto) -> ValidateDto.DistanceSimilarItemServDto:
+    #     # TF-IDF 벡터화 모델 로드
+    #     with open(LocalPath.TFIDF_VECTORIZER_LAST_14DAYS, 'rb') as f:
+    #         tfidf_vectorizer = pickle.load(f)
+    #
+    #     # Annoy 인덱스 로드
+    #     f = len(tfidf_vectorizer.get_feature_names_out())
+    #     annoy_index = AnnoyIndex(f, 'angular')
+    #     annoy_index.load(LocalPath.ANNOY_INDEX_LAST_14DAYS)
+    #
+    #     # 입력된 텍스트 TF-IDF 벡터화
+    #     request_message_vector = tfidf_vectorizer.transform([get_distance_serv_dto.message]).toarray().flatten()
+    #
+    #     # 유사한 메시지 검색
+    #     similar_items, distances = annoy_index.get_nns_by_vector(request_message_vector, get_distance_serv_dto.n_similar, include_distances=True)
+    #
+    #     return ValidateDto.DistanceSimilarItemServDto(
+    #         distances = distances,
+    #         similar_items = similar_items
+    #     )
+    #
