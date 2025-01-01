@@ -1,10 +1,10 @@
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from config.constants import DatabaseConfig
 from models import TbKaMessage
 from schemas.tb_ka_message_dto import TbKaMessageDto
 from schemas.validate_dto import ValidateDto
-from util.build_annoy_index import build_annoy_index
 from util.date_tool import get_seoul_time
 
 
@@ -26,9 +26,6 @@ class TbKaMessageService:
             )
             session.add(new_message)
             session.commit()
-
-            # 새 Message 저장 후 index build
-            build_annoy_index()
 
             return new_message
         except Exception as e:
@@ -70,3 +67,17 @@ class TbKaMessageService:
                 return False
         except Exception as e:
             print(f"오류 발생: {e}")
+
+    @staticmethod
+    def is_empty_last_14days(session: Session):
+        try:
+            result = session.execute(text(DatabaseConfig.GET_TbKaMessage_LAST_14DAYS))
+            count = result.scalar()  # 쿼리 결과에서 첫 번째 값을 가져옴
+
+            if count == 0:
+                return True
+            else:
+                return False
+        except Exception as e:
+            print(f"오류 발생: {e}")
+            return False  # 오류 발생 시 False 를 기본 값으로 반환
