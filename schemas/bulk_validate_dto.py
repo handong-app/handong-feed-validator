@@ -8,4 +8,4 @@ class BulkValidateDto:
         requests: List[ValidateDto.ValidateReqDto]
 
     class BulkValidateResDto(BaseModel):
-        requests: List[ValidateDto.ValidateResDto]
+        responses: List[ValidateDto.ValidateResDto]
