@@ -56,7 +56,21 @@ class ValidateService:
         # 1. Annoy 인덱스, TF-IDF vectorizer, 14일치 데이터 로드
         vectorizer = IndexManager.load_tfidf_vectorizer()
         annoy_index = IndexManager.load_annoy_index(vectorizer)
+        # 14일 데이터 로드 (예외 처리 추가)
         df_14days = IndexManager.load_last_14days_dataframe()
+
+        # 14일 이내 데이터가 존재하지 않거나 비어 있는 경우 새로운 메시지로 처리
+        if df_14days is None or df_14days.empty:
+            output_ln("❌ 14일 이내 데이터가 없음. 새로운 메시지로 처리.")
+            return ValidateService.new_message_routine(
+                session,
+                request,
+                TbKaMessageDto.AdditionalFieldServDto(
+                    threshold=threshold,
+                    distance=-1,
+                    similar_id="NEW_MESSAGE"
+                )
+            )
 
         # 2. 메시지를 TF-IDF 벡터화
         request_vector = vectorizer.transform([request.message]).toarray().flatten()
