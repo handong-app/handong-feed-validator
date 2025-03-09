@@ -29,7 +29,7 @@ class IndexManager:
         if not IndexManager.all_artifacts_exist():
             return True
 
-        # 최근 14일치 데이터의 최신 업데이트 시간 가져오기 (예: DB에서)
+        # 최근 14일치 데이터의 최신 업데이트 시간 가져오기
         latest_data_update_time = IndexManager.get_latest_data_update_time()
 
         # 각 아티팩트의 최종 수정 시간 확인
@@ -53,15 +53,17 @@ class IndexManager:
 
     @staticmethod
     def get_latest_data_update_time() -> float:
-        """DB에서 최근 14일치 데이터의 최신 업데이트 시간 가져오기"""
+        """DB에서 전체 데이터 중 최신 업데이트 시간 가져오기"""
 
-        # 예시: SQLAlchemy를 사용하여 DB에서 최신 업데이트 시간 가져오기
         from util.database import engine
         with engine.connect() as connection:
             result = connection.execute(
-                text("SELECT MAX(updated_at) FROM TbKaMessage WHERE updated_at >= NOW() - INTERVAL 14 DAY")
+                text("""SELECT updated_at FROM TbKaMessage ORDER BY updated_at DESC LIMIT 1""")
             ).scalar()
-        return result.timestamp() if result else datetime.now().timestamp()
+
+        if result:
+            return float(result.strftime("%s.%f"))
+        return datetime.now().timestamp()
 
     @staticmethod
     def ensure_index():
@@ -88,6 +90,15 @@ class IndexManager:
 
     @staticmethod
     def load_last_14days_dataframe():
-        """최근 14일 데이터 로드"""
-        with open(LocalPath.LAST_14DAYS_DF, 'rb') as f:
-            return pickle.load(f)
+        """최근 14일 데이터 로드 """
+        try:
+            with open(LocalPath.LAST_14DAYS_DF, 'rb') as f:
+                df = pickle.load(f)
+                # 데이터가 없으면 None 반환
+                if df is None or df.empty:
+                    output_ln("⚠️ [load_last_14days_dataframe] 14일 이내 데이터가 비어있음. None 반환.")
+                    return None
+                return df
+        except (FileNotFoundError, EOFError, pickle.UnpicklingError):
+            output_ln("❌ [load_last_14days_dataframe] 14일 이내 데이터 로드 실패. None 반환.")
+            return None
