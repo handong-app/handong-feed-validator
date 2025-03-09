@@ -6,6 +6,7 @@ from sqlalchemy import text
 import pickle
 from util.database import engine
 from config.constants import LocalPath, DatabaseConfig
+from util.io_utils import output_ln
 
 
 class BuildService:
@@ -19,21 +20,31 @@ class BuildService:
             query = text(DatabaseConfig.GET_TbKaMessage_LAST_14DAYS)
             df = pd.read_sql(query, con=connection)
 
-        # 데이터가 없으면 중단
         if df.empty:
-            raise ValueError("No data available from the last 14 days to build artifacts.")
+            output_ln("⚠️ [build_annoy_index_last_14days] 지난 14일 동안 데이터가 없음. 빈 아티팩트 생성.")
 
-        # TF-IDF 벡터화
-        tfidf_vectorizer = TfidfVectorizer()
-        tfidf_matrix = tfidf_vectorizer.fit_transform(df['message']).toarray()
+            # 빈 DataFrame 생성
+            df = pd.DataFrame(columns=['id', 'message', 'subject_id', 'created_at'])
 
-        # Annoy 인덱스 생성
-        f = tfidf_matrix.shape[1]  # 열의 개수, 벡터의 차원 (Vectorizer가 생성한 어휘의 고유 단어 개수와 동일)
-        annoy_index = AnnoyIndex(f, 'angular')
+            # 빈 TF-IDF 벡터라이저 생성 (더미 데이터 사용, 아예 빈 벡터라이저를 저장하는 것은 불가능함)
+            tfidf_vectorizer = TfidfVectorizer()
+            tfidf_vectorizer.fit(["dummy"])
 
-        # 각 벡터를 Annoy 인덱스에 추가
-        for i, vector in enumerate(tfidf_matrix):
-            annoy_index.add_item(i, vector)
+            # 빈 Annoy 인덱스 생성
+            annoy_index = AnnoyIndex(1, 'angular')
+
+        else:
+            # TF-IDF 벡터화
+            tfidf_vectorizer = TfidfVectorizer()
+            tfidf_matrix = tfidf_vectorizer.fit_transform(df['message']).toarray()
+
+            # Annoy 인덱스 생성
+            f = tfidf_matrix.shape[1]  # 벡터 차원
+            annoy_index = AnnoyIndex(f, 'angular')
+
+            # 각 벡터를 Annoy 인덱스에 추가
+            for i, vector in enumerate(tfidf_matrix):
+                annoy_index.add_item(i, vector)
 
         annoy_index.build(n_trees=10)
         annoy_index.save(LocalPath.ANNOY_INDEX_LAST_14DAYS)
