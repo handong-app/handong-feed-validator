@@ -33,12 +33,7 @@ class IndexManager:
         latest_data_update_time = IndexManager.get_latest_data_update_time()
 
         # 각 아티팩트의 최종 수정 시간 확인
-        artifact_times = [
-            os.path.getmtime(LocalPath.ANNOY_INDEX_LAST_14DAYS),
-            os.path.getmtime(LocalPath.TFIDF_VECTORIZER_LAST_14DAYS),
-            os.path.getmtime(LocalPath.LAST_14DAYS_DF)
-        ]
-        latest_artifact_time = max(artifact_times)
+        latest_artifact_time = IndexManager.get_latest_artifact_time()
 
         output_ln(f'latest_artifact_time: {latest_artifact_time}')
         output_ln(f'latest_data_update_time: {latest_data_update_time}')
@@ -62,6 +57,17 @@ class IndexManager:
                 text("SELECT MAX(updated_at) FROM TbKaMessage WHERE updated_at >= NOW() - INTERVAL 14 DAY")
             ).scalar()
         return result.timestamp() if result else datetime.now().timestamp()
+
+    @staticmethod
+    def get_latest_artifact_time() -> float:
+        """artifact의 최신 업데이트 시간 가져오기"""
+        artifact_times = [
+            os.path.getmtime(LocalPath.ANNOY_INDEX_LAST_14DAYS),
+            os.path.getmtime(LocalPath.TFIDF_VECTORIZER_LAST_14DAYS),
+            os.path.getmtime(LocalPath.LAST_14DAYS_DF)
+        ]
+        latest_artifact_time = max(artifact_times)
+        return latest_artifact_time
 
     @staticmethod
     def ensure_index():
