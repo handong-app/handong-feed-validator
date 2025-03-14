@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 from schemas.tb_ka_message_dto import TbKaMessageDto
@@ -11,6 +13,7 @@ class ValidateDto:
         user_id: int
         message: str
         sent_at: int
+        ip_address: Optional[str] = None
 
         def to_save_req_dto(self, additional_fields: TbKaMessageDto.AdditionalFieldServDto) -> TbKaMessageDto.SaveReqDto:
             return TbKaMessageDto.SaveReqDto(
