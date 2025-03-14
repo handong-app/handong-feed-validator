@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from schemas.bulk_validate_dto import BulkValidateDto
@@ -11,16 +11,22 @@ validate_router = APIRouter()
 
 
 @validate_router.post("", response_model=ValidateDto.ValidateResDto)
-async def process_single_validate(request: ValidateDto.ValidateReqDto, db: Session = Depends(get_db)):
+async def process_single_validate(request: Request, validate_req: ValidateDto.ValidateReqDto, db: Session = Depends(get_db)):
     try:
-        return ValidateService.process_single_validate(request, db)
+        client_ip = request.client.host
+        validate_req.ip_address = client_ip
+        return ValidateService.process_single_validate(validate_req, db)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @validate_router.post("/bulk", response_model=BulkValidateDto.BulkValidateResDto)
-async def process_bulk_validate(bulk_request: BulkValidateDto.BulkValidateReqDto, db: Session = Depends(get_db)):
+async def process_bulk_validate(request: Request, bulk_validate_req: BulkValidateDto.BulkValidateReqDto, db: Session = Depends(get_db)):
     try:
-        result = await ValidateService.process_bulk_validate(bulk_request, db)
+        client_ip = request.client.host
+        for req in bulk_validate_req.requests:
+            req.ip_address = client_ip
+
+        result = await ValidateService.process_bulk_validate(bulk_validate_req, db)
         return BulkValidateDto.BulkValidateResDto(requests=result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
