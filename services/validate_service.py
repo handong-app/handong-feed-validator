@@ -1,6 +1,8 @@
 import asyncio
 from sqlalchemy.orm import Session
 from typing import List
+
+from constants.enum import LogType, Status, CaseType, LogMessage
 from schemas.bulk_validate_dto import BulkValidateDto
 from schemas.tb_ka_message_dto import TbKaMessageDto
 from services.tb_subject_service import TbSubjectService
@@ -61,13 +63,13 @@ class ValidateService:
 
         save_log(
             chat_id = request.chat_id,
-            log_type = "INFO",
-            message = "유사도 검색 실행 완료",
+            log_type = LogType.INFO.value,
+            message = LogMessage.VALIDATED.value,
             latest_artifact_time = latest_artifact_time,
             latest_data_update_time = latest_data_update_time,
             distance = distances[0] if similar_items else None,
-            status = "CHECKED",
-            case_type= "UNDETERMINED",
+            status = Status.CHECKED.value,
+            case_type= CaseType.UNDETERMINED.value,
             ip_address = request.ip_address,
             user_id = request.user_id
         )
@@ -77,15 +79,15 @@ class ValidateService:
             output_ln("case 2: 새로운 메세지\n")
             save_log(
                 chat_id=request.chat_id,
-                log_type="INFO",
-                message="새로운 메시지로 처리됨",
+                log_type=LogType.INFO.value,
+                message=LogMessage.PROCESSED_AS_NEW_MESSAGE.value,
                 latest_artifact_time=latest_artifact_time,
                 latest_data_update_time=latest_data_update_time,
-                status="WILL_BE_SAVED",
+                status=Status.WILL_BE_SAVED.value,
                 distance=distances[0],
-                case_type="NEW_MESSAGE",
-                similar_message_id="NEW_MESSAGE",
-                subject_id="UNDETERMINED",
+                case_type=CaseType.NEW_MESSAGE.value,
+                similar_message_id=CaseType.NEW_MESSAGE.value,
+                subject_id=CaseType.UNDETERMINED.value,
                 ip_address=request.ip_address,
                 user_id=request.user_id
             )
@@ -93,7 +95,7 @@ class ValidateService:
             return ValidateService.new_message_routine(session, request, TbKaMessageDto.AdditionalFieldServDto(
                 threshold=threshold,
                 distance=distances[0] if similar_items else -1,
-                similar_id="NEW_MESSAGE"
+                similar_id=CaseType.NEW_MESSAGE.value
             ))
 
         # 5. 유사 메시지가 있으면 추가 정보 로드
@@ -115,13 +117,13 @@ class ValidateService:
                         output_ln(f"중복 메세지 (거리: {distances[idx]}, 중복 메세지는 거리 -2로 저장)")
                         save_log(
                             chat_id=request.chat_id,
-                            log_type="INFO",
-                            message="중복 메시지 처리됨",
+                            log_type=LogType.INFO.value,
+                            message=LogMessage.PROCESSED_AS_DUPLICATE_MESSAGE.value,
                             latest_artifact_time=latest_artifact_time,
                             latest_data_update_time=latest_data_update_time,
-                            status="WILL_NOT_BE_SAVED",
+                            status=Status.WILL_NOT_BE_SAVED.value,
                             distance=distances[idx],
-                            case_type="DUPLICATE_MESSAGE",
+                            case_type=CaseType.DUPLICATE_MESSAGE.value,
                             similar_message_id=similar_id,
                             subject_id=similar_subject_id,
                             ip_address=request.ip_address,
@@ -142,13 +144,13 @@ class ValidateService:
 
             save_log(
                 chat_id=request.chat_id,
-                log_type="INFO",
-                message="유사 메시지로 처리됨",
+                log_type=LogType.INFO.value,
+                message=LogMessage.PROCESSED_AS_SIMILAR_MESSAGE.value,
                 latest_artifact_time=latest_artifact_time,
                 latest_data_update_time=latest_data_update_time,
-                status="WILL_BE_SAVED",
+                status=Status.WILL_BE_SAVED.value,
                 distance=distances[0],
-                case_type="SIMILAR_MESSAGE",
+                case_type=CaseType.SIMILAR_MESSAGE.value,
                 similar_message_id=similar_id,
                 subject_id=similar_subject_id,
                 ip_address=request.ip_address,
@@ -169,7 +171,7 @@ class ValidateService:
             TbKaMessageDto.AdditionalFieldServDto(
                 threshold = threshold,
                 distance = -1,
-                similar_id = "NEW_MESSAGE"
+                similar_id = CaseType.NEW_MESSAGE.value
             )
         )
 
@@ -183,10 +185,10 @@ class ValidateService:
 
         save_log(
             chat_id=validate_req_dto.chat_id,
-            log_type="INFO",
-            message="새로운 메시지 저장됨",
-            status="SAVED",
-            case_type="NEW_MESSAGE",
+            log_type=LogType.INFO.value,
+            message=LogMessage.SAVED.value,
+            status=Status.SAVED.value,
+            case_type=CaseType.NEW_MESSAGE.value,
             subject_id=str(tb_ka_message.subject_id),
             similar_message_id=additional_field_dto.similar_id,
             ip_address=validate_req_dto.ip_address,
@@ -196,7 +198,7 @@ class ValidateService:
         return ValidateDto.ValidateResDto(
             message_id = tb_ka_message.id,
             chat_id = tb_ka_message.chat_id,
-            message = "New message",
+            message = CaseType.NEW_MESSAGE.value,
             subject_id = tb_ka_message.subject_id,
         )
 
@@ -208,10 +210,10 @@ class ValidateService:
 
         save_log(
             chat_id=validate_req_dto.chat_id,
-            log_type="INFO",
-            message="중복 메시지 저장되지 않음.",
-            status="NOT_SAVED",
-            case_type="DUPLICATE_MESSAGE",
+            log_type=LogType.INFO.value,
+            message=LogMessage.NOT_SAVED.value,
+            status=Status.NOT_SAVED.value,
+            case_type=CaseType.DUPLICATE_MESSAGE.value,
             subject_id=str(tb_ka_message.subject_id),
             similar_message_id=additional_field_dto.similar_id,
             ip_address=validate_req_dto.ip_address,
@@ -221,7 +223,7 @@ class ValidateService:
         return ValidateDto.ValidateResDto(
             message_id = tb_ka_message.id,
             chat_id = validate_req_dto.chat_id,
-            message = "Duplicate message",
+            message = CaseType.DUPLICATE_MESSAGE.value,
             subject_id = additional_field_dto.subject_id
         )
 
@@ -232,10 +234,10 @@ class ValidateService:
 
         save_log(
             chat_id=validate_req_dto.chat_id,
-            log_type="INFO",
-            message="유사 메시지 저장됨",
-            status="SAVED",
-            case_type="SIMILAR_MESSAGE",
+            log_type=LogType.INFO.value,
+            message=LogMessage.SAVED.value,
+            status=Status.SAVED.value,
+            case_type=CaseType.SIMILAR_MESSAGE.value,
             subject_id=str(tb_ka_message.subject_id),
             similar_message_id=additional_field_dto.similar_id,
             ip_address=validate_req_dto.ip_address,
@@ -245,7 +247,7 @@ class ValidateService:
         return ValidateDto.ValidateResDto(
             message_id = tb_ka_message.id,
             chat_id = tb_ka_message.chat_id,
-            message = f"Similar message, distance: {additional_field_dto.distance}",
+            message = f"{CaseType.SIMILAR_MESSAGE.value}, distance: {additional_field_dto.distance}",
             subject_id = tb_ka_message.subject_id
         )
 
