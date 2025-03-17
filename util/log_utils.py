@@ -1,6 +1,34 @@
 from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
 from util.database import engine
 from util.date_tool import convert_to_kst_datetime
+
+def ensure_log_table():
+    """log_validator 테이블이 없으면 생성"""
+    create_table_sql = """
+    CREATE TABLE IF NOT EXISTS log_validator (
+        id BIGINT PRIMARY KEY AUTO_INCREMENT,
+        timestamp DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+        chat_id BIGINT NOT NULL,
+        log_type VARCHAR(50) NOT NULL,
+        message TEXT NOT NULL,
+        latest_artifact_time DATETIME(6),
+        latest_data_update_time DATETIME(6),
+        status VARCHAR(20) NOT NULL,
+        distance FLOAT DEFAULT NULL,
+        case_type VARCHAR(50) DEFAULT NULL,
+        similar_message_id VARCHAR(32) DEFAULT NULL,
+        subject_id VARCHAR(32) DEFAULT NULL,
+        ip_address VARCHAR(45) DEFAULT NULL,
+        user_id BIGINT NULL
+    )
+    """
+    try:
+        with engine.connect() as connection:
+            connection.execute(text(create_table_sql))
+            connection.commit()
+    except ProgrammingError as e:
+        print(f"❌ [ERROR] 테이블 생성 중 오류 발생: {e}")
 
 
 def save_log(
@@ -18,6 +46,8 @@ def save_log(
     user_id: int = None
 ):
     """로그를 DB에 저장"""
+
+    ensure_log_table()
 
     latest_artifact_kst = convert_to_kst_datetime(latest_artifact_time)
     latest_data_update_kst = convert_to_kst_datetime(latest_data_update_time)
