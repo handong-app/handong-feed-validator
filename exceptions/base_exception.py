@@ -9,7 +9,7 @@ class CustomBaseException(HTTPException):
 
 
 class APIException(CustomBaseException):
-    """ 라우터 레벨에서 발생한 예외 (API 수준에서 최상위) """
+    """ API 수준에서 발생한 예외를 포괄적으로 묶은 예외 """
     def __init__(self, status_code: int, detail: str):
         super().__init__(status_code=status_code, detail=detail)
 
