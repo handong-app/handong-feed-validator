@@ -23,6 +23,7 @@ class Status(PyEnum):
     WILL_NOT_BE_SAVED = "WILL_NOT_BE_SAVED"  # 중복 메시지이므로 DB에 저장되지 않을 예정
     SAVED = "SAVED"  # DB에 저장됨
     NOT_SAVED = "NOT_SAVED"  # DB에 저장되지 않음
+    ERROR = "ERROR" # 에러 발생
 
 class CaseType(PyEnum):
     UNDETERMINED = "UNDETERMINED"  # 거리 측정만 된 상태로, 케이스 판정이 진행되지 않음
