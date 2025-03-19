@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from exceptions.base_exception import APIException, DatabaseException
@@ -17,6 +18,8 @@ async def process_single_validate(request: Request, validate_req: ValidateDto.Va
         client_ip = request.client.host
         validate_req.ip_address = client_ip
         return ValidateService.process_single_validate(validate_req, db)
+    except SQLAlchemyError as e:
+        raise e
     except DatabaseException as e:
         raise e
     except Exception as e:
@@ -31,6 +34,8 @@ async def process_bulk_validate(request: Request, bulk_validate_req: BulkValidat
 
         result = await ValidateService.process_bulk_validate(bulk_validate_req, db)
         return BulkValidateDto.BulkValidateResDto(requests=result)
+    except SQLAlchemyError as e:
+        raise e
     except DatabaseException as e:
         raise e
     except Exception as e:
