@@ -1,5 +1,5 @@
 from sqlalchemy import text
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
 from util.database import engine
 from util.date_tool import convert_to_kst_datetime
 
@@ -52,33 +52,40 @@ def save_log(
     latest_artifact_kst = convert_to_kst_datetime(latest_artifact_time)
     latest_data_update_kst = convert_to_kst_datetime(latest_data_update_time)
 
-    with engine.connect() as connection:
-        query = text("""
-            INSERT INTO log_validator (
-                chat_id, log_type, message, 
-                latest_artifact_time, latest_data_update_time, status, 
-                distance, case_type, similar_message_id, subject_id,
-                ip_address, user_id
-            ) VALUES (
-                :chat_id, :log_type, :message, 
-                :latest_artifact_time, :latest_data_update_time, :status, 
-                :distance, :case_type, :similar_message_id, :subject_id,
-                :ip_address, :user_id
-            )
-        """)
+    try:
+        with engine.connect() as connection:
+            query = text("""
+                INSERT INTO log_validator (
+                    chat_id, log_type, message, 
+                    latest_artifact_time, latest_data_update_time, status, 
+                    distance, case_type, similar_message_id, subject_id,
+                    ip_address, user_id
+                ) VALUES (
+                    :chat_id, :log_type, :message, 
+                    :latest_artifact_time, :latest_data_update_time, :status, 
+                    :distance, :case_type, :similar_message_id, :subject_id,
+                    :ip_address, :user_id
+                )
+            """)
 
-        connection.execute(query, {
-            "chat_id": chat_id,
-            "log_type": log_type,
-            "message": message,
-            "latest_artifact_time": latest_artifact_kst,
-            "latest_data_update_time": latest_data_update_kst,
-            "status": status,
-            "distance": distance,
-            "case_type": case_type,
-            "similar_message_id": similar_message_id,
-            "subject_id": subject_id,
-            "ip_address": ip_address,
-            "user_id": user_id
-        })
-        connection.commit()
+            connection.execute(query, {
+                "chat_id": chat_id,
+                "log_type": log_type,
+                "message": message,
+                "latest_artifact_time": latest_artifact_kst,
+                "latest_data_update_time": latest_data_update_kst,
+                "status": status,
+                "distance": distance,
+                "case_type": case_type,
+                "similar_message_id": similar_message_id,
+                "subject_id": subject_id,
+                "ip_address": ip_address,
+                "user_id": user_id
+            })
+            connection.commit()
+
+    except SQLAlchemyError as e:
+        print(f"❌ 로그 저장 실패: {str(e)}")
+        with open("../log_error.log", "a") as f:
+            from datetime import datetime
+            f.write(f"[{datetime.now()}] 로그 저장 실패: {str(e)}\n")
