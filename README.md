@@ -55,7 +55,16 @@ DB_PASSWORD=<your_db_password>
 DB_PORT=<your_db_port>  # Default is 3306
 ```
 
-### 4. Run the Server
+### 4. Apply DB migrations (First-time setup)
+If you’re setting up the project for the first time or on a new server, apply database schema via Alembic:
+
+```bash
+alembic upgrade head
+```
+This ensures all required tables and indexes are created based on migration history.
+
+
+### 5. Run the Server
 
 Once everything is set up, you can run the FastAPI server:
 
