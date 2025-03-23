@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, BigInteger, Integer, Text, Float
+from sqlalchemy import Column, String, DateTime, BigInteger, Integer, Text, Float, Index, desc
 
 from util.date_tool import get_seoul_time
 from util.database import Base
@@ -7,6 +7,10 @@ from util.database import Base
 
 class TbKaMessage(Base):
     __tablename__ = "TbKaMessage"
+
+    __table_args__ = (
+        Index("idx_ka_message_subject_sent", "subject_id", desc("last_sent_at")),
+    )
 
     id = Column(String(32), primary_key=True, default=lambda: str(uuid.uuid4()).replace('-', ''))
     chat_id = Column(BigInteger, nullable=False)
