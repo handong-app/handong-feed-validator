@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, BigInteger, Integer
+from sqlalchemy import Column, DateTime, BigInteger, Integer, Boolean, CHAR
 from util.database import Base
 from util.date_tool import get_seoul_time
 
@@ -10,6 +10,7 @@ class TbSubject(Base):
     updated_at = Column(DateTime, default=get_seoul_time, onupdate=get_seoul_time)
     last_sent_at = Column(Integer)
     last_sent_chat_id = Column(BigInteger)
-    deleted = Column(String(1), default="N")
+    deleted = Column(CHAR(1), default="N")
+    is_tag_assigned = Column(Boolean, default=False, server_default="0")
     # priority_value
     # is_ban
