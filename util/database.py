@@ -13,7 +13,7 @@ db_password = os.getenv('DB_PASSWORD')
 db_port = os.getenv('DB_PORT')
 DATABASE_URL = f"mysql+pymysql://{db_username}:{db_password}@{db_host}:{db_port}/{db_name}"
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # 모든 모델의 부모
 Base = declarative_base()
